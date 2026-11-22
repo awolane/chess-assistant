@@ -1409,7 +1409,7 @@ static void clampGeloToActiveRange(void) {
         [scroll.bottomAnchor constraintEqualToAnchor:card.contentView.bottomAnchor],
 
         [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor],
-        [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-bottomPad],
+                [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-16],
         [stack.leadingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.leadingAnchor constant:20],
         [stack.trailingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.trailingAnchor constant:-20]]];
 
