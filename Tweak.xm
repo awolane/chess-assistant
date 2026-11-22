@@ -1389,9 +1389,8 @@ static void clampGeloToActiveRange(void) {
     _stack = stack;
     _scroll = scroll;
 
-    CGFloat bottomPad = 16;
-    if (@available(iOS 11, *)) bottomPad += self.safeAreaInsets.bottom;
-    CGFloat maxScroll = self.bounds.size.height * 0.85 - 22;
+
+
 
       [NSLayoutConstraint activateConstraints:@[
         [card.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
@@ -1491,7 +1490,11 @@ static void clampGeloToActiveRange(void) {
     UILabel *tgLbl = [self lbl:@"Telegram: t.me/recrouser" size:14 weight:UIFontWeightSemibold color:[UIColor whiteColor]];
     UILabel *ytLbl = [self lbl:@"YouTube: https://youtube.com" size:13 weight:UIFontWeightMedium color:[UIColor whiteColor]];
     ytLbl.numberOfLines = 0;
-    [credStack addArrangedSubview:[self group:@[tgLbl, [self sep], ytLbl]]];
+        UIStackView *credCol = [[UIStackView alloc] initWithArrangedSubviews:@[tgLbl, [self sep], ytLbl]];
+    credCol.axis = UILayoutConstraintAxisVertical;
+    credCol.spacing = 10;
+    [credStack addArrangedSubview:[self group:credCol]];
+
 
     [_stack addArrangedSubview:rageStack];
     [_stack addArrangedSubview:appStack];
@@ -1562,7 +1565,8 @@ static void clampGeloToActiveRange(void) {
         [rageStack addArrangedSubview:[self group:grp]];
 
         // ---- FEATURES ----
-        appStack addArrangedSubview:[self sectionLabel:@"Features"]];
+            [appStack addArrangedSubview:[self sectionLabel:@"Features"]];
+
 
         NSMutableArray *swRows = [NSMutableArray array];
         [swRows addObject:[self rowTitle:@"Move Analysis" control:[self switchOn:gTrackQuality sel:@selector(swAnalysis:)]]];
@@ -1622,13 +1626,14 @@ static void clampGeloToActiveRange(void) {
         [rageStack addArrangedSubview:[self group:apCol]];
 
         // ---- CONTROLS ----
-        [_appStack addArrangedSubview:[self sectionLabel:@"Controls"]];
+            [appStack addArrangedSubview:[self sectionLabel:@"Controls"]];
 
-       [_appStack addArrangedSubview:[self bigBtn:(gEnabled ? @"Pause Assistant" : @"Enable Assistant") color:(gEnabled ? [UIColor colorWithRed:0.75 green:0.10 blue:0.15 alpha:1.0] : [UIColor colorWithWhite:0.25 alpha:0.9]) sel:@selector(enableTap)]];
+
+       [appStack addArrangedSubview:[self bigBtn:(gEnabled ? @"Pause Assistant" : @"Enable Assistant") color:(gEnabled ? [UIColor colorWithRed:0.75 green:0.10 blue:0.15 alpha:1.0] : [UIColor colorWithWhite:0.25 alpha:0.9]) sel:@selector(enableTap)]];
 
         UIButton *prefBtn = [self smallBtn:@"⚡ Preferred Settings (Ban-Safe)" sel:@selector(preferredTap)];
         prefBtn.backgroundColor = [CH_ACCENT colorWithAlphaComponent:0.25];
-        [_appStack addArrangedSubview:prefBtn];
+        [appStack addArrangedSubview:prefBtn];
 
         [_scroll setContentOffset:CGPointZero];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
