@@ -70,3 +70,8 @@ jobs:
             --notes "Rolling dev build. Use the v2.5.2 release for the stable download." \
             --prerelease
           gh release upload v2.5.2 "$DEB" --clobber || true
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-assistant-deb
+          path: packages/*.deb
