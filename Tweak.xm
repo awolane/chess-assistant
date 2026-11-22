@@ -803,13 +803,13 @@ static void showDebugLog(void) {
 
 static void showCredits(void) {
     UIAlertController *ac = [UIAlertController
-        alertControllerWithTitle:@"Chess Assistant"
-        message:@"Made by @epicccccc\n\nYouTube: @epicccccc\nDiscord: itzzace.\n\nSF18 + Auto Play by Yousseif\nGitHub: usif-x"
+        alertControllerWithTitle:@"Recrouser Dominate"
+        message:@"Готов доминировать над детьми шалав?"
         preferredStyle:UIAlertControllerStyleAlert];
-    [ac addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault
-        handler:^(UIAlertAction *_) { hideMenu(); }]];
+    [ac addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) { hideMenu(); }]];
     showAC(ac);
 }
+
 
 #if 0
 static void reopenSettings(void) {
