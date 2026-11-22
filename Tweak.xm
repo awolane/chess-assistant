@@ -1393,10 +1393,11 @@ static void clampGeloToActiveRange(void) {
     if (@available(iOS 11, *)) bottomPad += self.safeAreaInsets.bottom;
     CGFloat maxScroll = self.bounds.size.height * 0.85 - 22;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [card.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [card.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [card.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+      [NSLayoutConstraint activateConstraints:@[
+        [card.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+        [card.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+        [card.widthAnchor constraintEqualToConstant:340.0],
+        [card.heightAnchor constraintEqualToConstant:340.0],
 
         [grab.topAnchor constraintEqualToAnchor:card.contentView.topAnchor constant:8],
         [grab.centerXAnchor constraintEqualToAnchor:card.contentView.centerXAnchor],
@@ -1413,13 +1414,20 @@ static void clampGeloToActiveRange(void) {
         [stack.leadingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.leadingAnchor constant:20],
         [stack.trailingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.trailingAnchor constant:-20]]];
 
-    NSLayoutConstraint *fit = [scroll.heightAnchor constraintEqualToAnchor:stack.heightAnchor constant:bottomPad];
-    fit.priority = 750; fit.active = YES;
-    NSLayoutConstraint *cap = [scroll.heightAnchor constraintLessThanOrEqualToConstant:maxScroll];
-    cap.priority = 1000; cap.active = YES;
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleCardPan:)];
+[card addGestureRecognizer:pan];
+
 
     [self populate];
 }
+
+- (void)handleCardPan:(UIPanGestureRecognizer *)pan {
+    UIView *target = pan.view;
+    CGPoint translation = [pan translationInView:self];
+    target.center = CGPointMake(target.center.x + translation.x, target.center.y + translation.y);
+    [pan setTranslation:CGPointZero inView:self];
+}
+
 
 - (void)populate {
     @try {
@@ -1459,8 +1467,42 @@ static void clampGeloToActiveRange(void) {
         UIView *stats = [self statsCard];
         [_stack addArrangedSubview:stats];
 
+    UISegmentedControl *tabSeg = [[UISegmentedControl alloc] initWithItems:@[@"Rage", @"Appearance", @"Credits"]];
+    tabSeg.selectedSegmentIndex = 0;
+    [self styleSeg:tabSeg];
+    [tabSeg addTarget:self action:@selector(onTabSwitch:) forControlEvents:UIControlEventValueChanged];
+    [_stack addArrangedSubview:tabSeg];
+
+    UIStackView *rageStack = [[UIStackView alloc] init];
+    rageStack.axis = UILayoutConstraintAxisVertical;
+    rageStack.spacing = 14;
+
+    UIStackView *appStack = [[UIStackView alloc] init];
+    appStack.axis = UILayoutConstraintAxisVertical;
+    appStack.spacing = 14;
+    appStack.hidden = YES;
+
+    UIStackView *credStack = [[UIStackView alloc] init];
+    credStack.axis = UILayoutConstraintAxisVertical;
+    credStack.spacing = 12;
+    credStack.hidden = YES;
+
+    [credStack addArrangedSubview:[self sectionLabel:@"Credits"]];
+    UILabel *tgLbl = [self lbl:@"Telegram: t.me/recrouser" size:14 weight:UIFontWeightSemibold color:[UIColor whiteColor]];
+    UILabel *ytLbl = [self lbl:@"YouTube: https://youtube.com" size:13 weight:UIFontWeightMedium color:[UIColor whiteColor]];
+    ytLbl.numberOfLines = 0;
+    [credStack addArrangedSubview:[self group:@[tgLbl, [self sep], ytLbl]]];
+
+    [_stack addArrangedSubview:rageStack];
+    [_stack addArrangedSubview:appStack];
+    [_stack addArrangedSubview:credStack];
+
+    objc_setAssociatedObject(self, "rageStack", rageStack, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, "appStack", appStack, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, "credStack", credStack, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
         // ---- ENGINE ----
-        [_stack addArrangedSubview:[self sectionLabel:@"Engine"]];
+        [rageStack addArrangedSubview:[self sectionLabel:@"Engine"]];
         int eloCnt = 0; const NSInteger *eloLvls = activeEloLevels(&eloCnt);
 
         UISegmentedControl *engSeg = [[UISegmentedControl alloc] initWithItems:@[@"SF18", @"MAIA"]];
@@ -1487,10 +1529,10 @@ static void clampGeloToActiveRange(void) {
             [self rowTitle:@"Engine" control:engSeg], [self sep],
             eloHdr, [self sliderRow:elo], _eloTier]];
         eloCol.axis = UILayoutConstraintAxisVertical; eloCol.spacing = 8;
-        [_stack addArrangedSubview:[self group:eloCol]];
+        [rageStack addArrangedSubview:[self group:eloCol]];
 
         // ---- DISPLAY ----
-        [_stack addArrangedSubview:[self sectionLabel:@"Display"]];
+         [rageStack addArrangedSubview:[self sectionLabel:@"Display"]];
 
         UISegmentedControl *evalSeg = [[UISegmentedControl alloc] initWithItems:@[@"Centipawn", @"Win %"]];
         evalSeg.selectedSegmentIndex = gShowWinPct ? 1 : 0; [self styleSeg:evalSeg];
@@ -1517,10 +1559,10 @@ static void clampGeloToActiveRange(void) {
             [self rowTitle:@"Opacity" control:_opValue],
             [self sliderRow:op]]];
         grp.axis = UILayoutConstraintAxisVertical; grp.spacing = 12;
-        [_stack addArrangedSubview:[self group:grp]];
+        [rageStack addArrangedSubview:[self group:grp]];
 
         // ---- FEATURES ----
-        [_stack addArrangedSubview:[self sectionLabel:@"Features"]];
+        appStack addArrangedSubview:[self sectionLabel:@"Features"]];
 
         NSMutableArray *swRows = [NSMutableArray array];
         [swRows addObject:[self rowTitle:@"Move Analysis" control:[self switchOn:gTrackQuality sel:@selector(swAnalysis:)]]];
@@ -1530,10 +1572,10 @@ static void clampGeloToActiveRange(void) {
         [swRows addObject:[self rowTitle:@"Color by Eval" control:[self switchOn:gArrowEvalColor sel:@selector(swColor:)]]];
         UIStackView *sw = [[UIStackView alloc] initWithArrangedSubviews:swRows];
         sw.axis = UILayoutConstraintAxisVertical; sw.spacing = 14;
-        [_stack addArrangedSubview:[self group:sw]];
+        [appStack addArrangedSubview:[self group:sw]];
 
         // ---- AUTO PLAY ----
-        [_stack addArrangedSubview:[self sectionLabel:@"Auto Play"]];
+        [rageStack addArrangedSubview:[self sectionLabel:@"Auto Play"]];
 
         _apDelayValue = [self lbl:[NSString stringWithFormat:@"%.1fs", gAutoPlayDelay]
                              size:15 weight:UIFontWeightSemibold color:CH_ACCENT];
@@ -1577,16 +1619,16 @@ static void clampGeloToActiveRange(void) {
             [self sliderRow:apSecondPct],
             [self lbl:@"Wait after opponent's move before auto playing." size:11 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.5 alpha:1]]]];
         apCol.axis = UILayoutConstraintAxisVertical; apCol.spacing = 12;
-        [_stack addArrangedSubview:[self group:apCol]];
+        [rageStack addArrangedSubview:[self group:apCol]];
 
         // ---- CONTROLS ----
-        [_stack addArrangedSubview:[self sectionLabel:@"Controls"]];
+        [_appStack addArrangedSubview:[self sectionLabel:@"Controls"]];
 
-       [_stack addArrangedSubview:[self bigBtn:(gEnabled ? @"Pause Assistant" : @"Enable Assistant") color:(gEnabled ? [UIColor colorWithRed:0.75 green:0.10 blue:0.15 alpha:1.0] : [UIColor colorWithWhite:0.25 alpha:0.9]) sel:@selector(enableTap)]];
+       [_appStack addArrangedSubview:[self bigBtn:(gEnabled ? @"Pause Assistant" : @"Enable Assistant") color:(gEnabled ? [UIColor colorWithRed:0.75 green:0.10 blue:0.15 alpha:1.0] : [UIColor colorWithWhite:0.25 alpha:0.9]) sel:@selector(enableTap)]];
 
         UIButton *prefBtn = [self smallBtn:@"⚡ Preferred Settings (Ban-Safe)" sel:@selector(preferredTap)];
         prefBtn.backgroundColor = [CH_ACCENT colorWithAlphaComponent:0.25];
-        [_stack addArrangedSubview:prefBtn];
+        [_appStack addArrangedSubview:prefBtn];
 
         [_scroll setContentOffset:CGPointZero];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -1599,6 +1641,14 @@ static void clampGeloToActiveRange(void) {
     } @catch (NSException *e) {
         dbg([NSString stringWithFormat:@"PANEL ERR: %@ — %@", e.name, e.reason]);
     }
+}
+- (void)onTabSwitch:(UISegmentedControl *)seg {
+    UIView *r = objc_getAssociatedObject(self, "rageStack");
+    UIView *a = objc_getAssociatedObject(self, "appStack");
+    UIView *c = objc_getAssociatedObject(self, "credStack");
+    r.hidden = (seg.selectedSegmentIndex != 0);
+    a.hidden = (seg.selectedSegmentIndex != 1);
+    c.hidden = (seg.selectedSegmentIndex != 2);
 }
 
 - (void)eloSlide:(UISlider *)s {
