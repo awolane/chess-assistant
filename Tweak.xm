@@ -534,8 +534,8 @@ static void clearArrow(void) {
     gCurrentArrows = nil;
 }
 
-static CAShapeLayer *buildArrowLayer(NSString *moveUCI, CGRect bounds, BOOL flipped,
-                                     double evalForUs, int rank) {
+static CALayer *buildArrowLayer(NSString *moveUCI, CGRect bounds, BOOL flipped,
+                                double evalForUs, int rank) {
     int fromSq = 0, toSq = 0;
     if (!parseMoveUCI(moveUCI, &fromSq, &toSq)) return nil;
     if (bounds.size.width < 8) return nil;
@@ -545,39 +545,64 @@ static CAShapeLayer *buildArrowLayer(NSString *moveUCI, CGRect bounds, BOOL flip
     CGPoint toPt   = squareToPoint(toSq,   bounds, flipped);
 
     CGFloat t = gArrowThick;
-    UIBezierPath *path = arrowPath(fromPt, toPt, sqSize * 0.45, sqSize * 0.65 * t, sqSize * 0.25 * t);
+    UIBezierPath *path = arrowPath(fromPt, toPt, sqSize * 0.45, sqSize * 0.65 * t, sqSize * 0.18 * t);
     if (!path) return nil;
 
-    CGFloat a = gArrowAlpha;
-    UIColor *fillColor, *strokeColor;
-    if (rank > 0) {
+    CGFloat a = (rank > 0) ? (gArrowAlpha * 0.55) : gArrowAlpha;
 
-        CGFloat sa = a * 0.55;
-        fillColor   = [UIColor colorWithRed:0.55 green:0.55 blue:0.6 alpha:sa];
-        strokeColor = [UIColor colorWithRed:0.35 green:0.35 blue:0.4 alpha:MIN(1.0, sa + 0.2)];
-    } else if (!gArrowEvalColor) {
-        fillColor   = [UIColor colorWithRed:0.2 green:0.8 blue:0.2 alpha:a];
-        strokeColor = [UIColor colorWithRed:0.1 green:0.5 blue:0.1 alpha:MIN(1.0, a + 0.2)];
-    } else if (evalForUs > 1.0) {
-        fillColor   = [UIColor colorWithRed:0.2 green:0.8 blue:0.2 alpha:a];
-        strokeColor = [UIColor colorWithRed:0.1 green:0.5 blue:0.1 alpha:MIN(1.0, a + 0.2)];
-    } else if (evalForUs < -1.0) {
-        fillColor   = [UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:a];
-        strokeColor = [UIColor colorWithRed:0.6 green:0.1 blue:0.1 alpha:MIN(1.0, a + 0.2)];
-    } else {
-        fillColor   = [UIColor colorWithRed:0.95 green:0.75 blue:0.1 alpha:a];
-        strokeColor = [UIColor colorWithRed:0.7  green:0.55 blue:0.0 alpha:MIN(1.0, a + 0.2)];
-    }
+    // Контейнер для стрелки
+    CALayer *container = [CALayer layer];
+    container.frame = bounds;
+    container.zPosition = 10000;
 
-    CAShapeLayer *layer = [CAShapeLayer layer];
-    layer.path = path.CGPath;
-    layer.fillColor = fillColor.CGColor;
-    layer.strokeColor = strokeColor.CGColor;
-    layer.lineWidth = 1.5;
-    layer.zPosition = 9999 - rank;
-    return layer;
+    // Переливающийся черно-красный градиент
+    CAGradientLayer *grad = [CAGradientLayer layer];
+    grad.frame = bounds;
+    grad.opacity = (float)a;
+    grad.colors = @[
+        (id)[UIColor colorWithRed:0.05 green:0.05 blue:0.06 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.88 green:0.08 blue:0.15 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.12 green:0.02 blue:0.04 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.95 green:0.14 blue:0.20 alpha:1.0].CGColor
+    ];
+    grad.locations = @[@0.0, @0.35, @0.7, @1.0];
+    grad.startPoint = CGPointMake(0.0, 0.0);
+    grad.endPoint   = CGPointMake(1.0, 1.0);
+
+    // Маска по форме стрелки
+    CAShapeLayer *mask = [CAShapeLayer layer];
+    mask.path = path.CGPath;
+    grad.mask = mask;
+
+    // Анимация перелива градиента
+    CABasicAnimation *animStart = [CABasicAnimation animationWithKeyPath:@"startPoint"];
+    animStart.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.0, 0.0)];
+    animStart.toValue   = [NSValue valueWithCGPoint:CGPointMake(1.0, 0.0)];
+
+    CABasicAnimation *animEnd = [CABasicAnimation animationWithKeyPath:@"endPoint"];
+    animEnd.fromValue = [NSValue valueWithCGPoint:CGPointMake(1.0, 1.0)];
+    animEnd.toValue   = [NSValue valueWithCGPoint:CGPointMake(0.0, 1.0)];
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[animStart, animEnd];
+    group.duration = 2.4;
+    group.autoreverses = YES;
+    group.repeatCount = HUGE_VALF;
+    group.removedOnCompletion = NO;
+    [grad addAnimation:group forKey:@"blackRedShimmer"];
+
+    // Тонкая неоново-красная обводка контура
+    CAShapeLayer *strokeLayer = [CAShapeLayer layer];
+    strokeLayer.path = path.CGPath;
+    strokeLayer.fillColor = [UIColor clearColor].CGColor;
+    strokeLayer.strokeColor = [UIColor colorWithRed:0.95 green:0.15 blue:0.22 alpha:MIN(1.0, a + 0.25)].CGColor;
+    strokeLayer.lineWidth = MAX(1.2, sqSize * 0.03);
+    strokeLayer.lineJoin = kCALineJoinRound;
+
+    [container addSublayer:grad];
+    [container addSublayer:strokeLayer];
+    return container;
 }
-
 static void drawArrowsCore(UIView *board, BOOL flipped) {
     if (!board || !board.window || !gCurrentArrows.count) return;
     CGRect bounds = board.bounds;
@@ -587,7 +612,7 @@ static void drawArrowsCore(UIView *board, BOOL flipped) {
     [gArrowLayers removeAllObjects];
 
     for (NSDictionary *a in gCurrentArrows) {
-        CAShapeLayer *layer = buildArrowLayer(a[@"move"], bounds, flipped,
+         CALayer *layer = buildArrowLayer(a[@"move"], bounds, flipped,
                                               [a[@"eval"] doubleValue], [a[@"rank"] intValue]);
         if (layer) { [board.layer addSublayer:layer]; [gArrowLayers addObject:layer]; }
 
@@ -1363,62 +1388,97 @@ static void clampGeloToActiveRange(void) {
 }
 
 - (void)build {
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark];
-        UIVisualEffectView *card = [[UIVisualEffectView alloc] initWithEffect:blur];
-    card.contentView.backgroundColor = [UIColor colorWithRed:0.28 green:0.03 blue:0.06 alpha:0.78];
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+    UIVisualEffectView *card = [[UIVisualEffectView alloc] initWithEffect:blur];
+    card.contentView.backgroundColor = [UIColor colorWithRed:0.05 green:0.02 blue:0.03 alpha:0.92];
     card.translatesAutoresizingMaskIntoConstraints = NO;
-    card.layer.cornerRadius = 28; card.layer.masksToBounds = YES;
-    if (@available(iOS 11, *)) card.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
+    card.layer.cornerRadius = 22;
+    card.layer.masksToBounds = YES;
     [self addSubview:card];
     _card = card;
 
+    // Переливающаяся черно-красная неоновая рамка
+    CAGradientLayer *borderGrad = [CAGradientLayer layer];
+    borderGrad.frame = CGRectMake(0, 0, 356, 410);
+    borderGrad.colors = @[
+        (id)[UIColor colorWithRed:0.95 green:0.10 blue:0.18 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.08 green:0.02 blue:0.03 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.85 green:0.08 blue:0.15 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.05 green:0.05 blue:0.06 alpha:1.0].CGColor
+    ];
+    borderGrad.locations = @[@0.0, @0.35, @0.7, @1.0];
+    borderGrad.startPoint = CGPointMake(0, 0);
+    borderGrad.endPoint   = CGPointMake(1, 1);
+
+    CAShapeLayer *borderMask = [CAShapeLayer layer];
+    borderMask.path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(CGRectMake(0, 0, 356, 410), 1.0, 1.0) cornerRadius:22].CGPath;
+    borderMask.fillColor = [UIColor clearColor].CGColor;
+    borderMask.strokeColor = [UIColor blackColor].CGColor;
+    borderMask.lineWidth = 2.0;
+    borderGrad.mask = borderMask;
+
+    CABasicAnimation *bAnim1 = [CABasicAnimation animationWithKeyPath:@"startPoint"];
+    bAnim1.fromValue = [NSValue valueWithCGPoint:CGPointMake(0, 0)];
+    bAnim1.toValue   = [NSValue valueWithCGPoint:CGPointMake(1, 0)];
+    CABasicAnimation *bAnim2 = [CABasicAnimation animationWithKeyPath:@"endPoint"];
+    bAnim2.fromValue = [NSValue valueWithCGPoint:CGPointMake(1, 1)];
+    bAnim2.toValue   = [NSValue valueWithCGPoint:CGPointMake(0, 1)];
+    CAAnimationGroup *bGroup = [CAAnimationGroup animation];
+    bGroup.animations = @[bAnim1, bAnim2];
+    bGroup.duration = 2.8;
+    bGroup.autoreverses = YES;
+    bGroup.repeatCount = HUGE_VALF;
+    bGroup.removedOnCompletion = NO;
+    [borderGrad addAnimation:bGroup forKey:@"cardBorderShimmer"];
+    [card.layer addSublayer:borderGrad];
+
     UIView *grab = [[UIView alloc] init];
     grab.translatesAutoresizingMaskIntoConstraints = NO;
-    grab.backgroundColor = [UIColor colorWithWhite:1 alpha:0.25];
+    grab.backgroundColor = [UIColor colorWithRed:0.90 green:0.15 blue:0.22 alpha:0.55];
     grab.layer.cornerRadius = 2.5;
     [card.contentView addSubview:grab];
 
     UIScrollView *scroll = [[UIScrollView alloc] init];
     scroll.translatesAutoresizingMaskIntoConstraints = NO;
+    scroll.showsVerticalScrollIndicator = NO;
     [card.contentView addSubview:scroll];
 
     UIStackView *stack = [[UIStackView alloc] init];
-    stack.axis = UILayoutConstraintAxisVertical; stack.spacing = 14;
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = 12;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [scroll addSubview:stack];
     _stack = stack;
     _scroll = scroll;
 
-
-
-
-      [NSLayoutConstraint activateConstraints:@[
+    [NSLayoutConstraint activateConstraints:@[
         [card.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [card.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [card.widthAnchor constraintEqualToConstant:340.0],
-        [card.heightAnchor constraintEqualToConstant:340.0],
+        [card.widthAnchor constraintEqualToConstant:356.0],
+        [card.heightAnchor constraintEqualToConstant:410.0],
 
         [grab.topAnchor constraintEqualToAnchor:card.contentView.topAnchor constant:8],
         [grab.centerXAnchor constraintEqualToAnchor:card.contentView.centerXAnchor],
-        [grab.widthAnchor constraintEqualToConstant:40],
-        [grab.heightAnchor constraintEqualToConstant:5],
+        [grab.widthAnchor constraintEqualToConstant:42],
+        [grab.heightAnchor constraintEqualToConstant:4],
 
-        [scroll.topAnchor constraintEqualToAnchor:card.contentView.topAnchor constant:22],
+        [scroll.topAnchor constraintEqualToAnchor:card.contentView.topAnchor constant:18],
         [scroll.leadingAnchor constraintEqualToAnchor:card.contentView.leadingAnchor],
         [scroll.trailingAnchor constraintEqualToAnchor:card.contentView.trailingAnchor],
         [scroll.bottomAnchor constraintEqualToAnchor:card.contentView.bottomAnchor],
 
         [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor],
-                [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-16],
-        [stack.leadingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.leadingAnchor constant:20],
-        [stack.trailingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.trailingAnchor constant:-20]]];
+        [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-16],
+        [stack.leadingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.leadingAnchor constant:14],
+        [stack.trailingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.trailingAnchor constant:-14]
+    ]];
 
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleCardPan:)];
-[card addGestureRecognizer:pan];
-
+    [card addGestureRecognizer:pan];
 
     [self populate];
 }
+
 
 - (void)handleCardPan:(UIPanGestureRecognizer *)pan {
     UIView *target = pan.view;
