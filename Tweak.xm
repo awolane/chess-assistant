@@ -611,7 +611,7 @@ static void drawArrowsCore(UIView *board, BOOL flipped) {
     }
 }
 
-
+static void reassertArrow(UIView *board);
 static void drawArrowsOnBoard(NSArray *arrows, UIView *board, BOOL flipped) {
     dispatch_async(dispatch_get_main_queue(), ^{
         clearArrow();
@@ -1364,7 +1364,8 @@ static void clampGeloToActiveRange(void) {
 
 - (void)build {
     UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark];
-    UIVisualEffectView *card.contentView.backgroundColor = [UIColor colorWithRed:0.28 green:0.03 blue:0.06 alpha:0.78];
+        UIVisualEffectView *card = [[UIVisualEffectView alloc] initWithEffect:blur];
+    card.contentView.backgroundColor = [UIColor colorWithRed:0.28 green:0.03 blue:0.06 alpha:0.78];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.layer.cornerRadius = 28; card.layer.masksToBounds = YES;
     if (@available(iOS 11, *)) card.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
@@ -1581,9 +1582,8 @@ static void clampGeloToActiveRange(void) {
         // ---- CONTROLS ----
         [_stack addArrangedSubview:[self sectionLabel:@"Controls"]];
 
-        [_stack addArrangedSubview:[self bigBtn:(gEnabled ? @"Pause Assistant" : @"Enable Assistant")
-                                                                            color:(gEnabled ? [UIColor colorWithRed:0.75 green:0.10 blue:0.15 alpha:1.0] : [UIColor colorWithWhite:0.25 alpha:0.9] 
-    sel:@selector(enableTap)]];
+       [_stack addArrangedSubview:[self bigBtn:(gEnabled ? @"Pause Assistant" : @"Enable Assistant") color:(gEnabled ? [UIColor colorWithRed:0.75 green:0.10 blue:0.15 alpha:1.0] : [UIColor colorWithWhite:0.25 alpha:0.9]) sel:@selector(enableTap)]];
+
         UIButton *prefBtn = [self smallBtn:@"⚡ Preferred Settings (Ban-Safe)" sel:@selector(preferredTap)];
         prefBtn.backgroundColor = [CH_ACCENT colorWithAlphaComponent:0.25];
         [_stack addArrangedSubview:prefBtn];
