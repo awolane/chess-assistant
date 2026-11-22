@@ -49,7 +49,7 @@ jobs:
       - name: Setup Theos
         uses: beerpiss/theos-action@v1
         with:
-          cache: true
+          cache: false
 
       - name: Build .deb
         run: make package FINALPACKAGE=1
