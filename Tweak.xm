@@ -1694,25 +1694,8 @@ objc_setAssociatedObject(self, "miscTab", miscTab, OBJC_ASSOCIATION_RETAIN_NONAT
 dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
 }
 }
-* (void)onTabSwitch:(UISegmentedControl *)seg { NSArray *keys = @[@"engineTab", @"visualTab", @"statsTab", @"miscTab"]; NSInteger idx = seg.selectedSegmentIndex; for (NSInteger i = 0; i < 4; i++) { UIView *tab = objc_getAssociatedObject(self, [keys[i] UTF8String]); if (i == idx) { tab.alpha = 0.0; tab.hidden = NO; tab.transform = CGAffineTransformMakeTranslation(0, 6); [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{ tab.alpha = 1.0; tab.transform = CGAffineTransformIdentity; } completion:nil]; } else { tab.hidden = YES; } } [_scroll setContentOffset:CGPointZero animated:YES]; }
+- (void)onTabSwitch:(UISegmentedControl *)seg { NSArray *keys = @[@"engineTab", @"visualTab", @"statsTab", @"miscTab"]; NSInteger idx = seg.selectedSegmentIndex; for (NSInteger i = 0; i < 4; i++) { UIView *tab = objc_getAssociatedObject(self, [keys[i] UTF8String]); if (i == idx) { tab.alpha = 0.0; tab.hidden = NO; tab.transform = CGAffineTransformMakeTranslation(0, 6); [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{ tab.alpha = 1.0; tab.transform = CGAffineTransformIdentity; } completion:nil]; } else { tab.hidden = YES; } } [_scroll setContentOffset:CGPointZero animated:YES]; }
 
-- (void)eloSlide:(UISlider *)s {
-    int i = (int)roundf(s.value); s.value = i;
-    NSInteger e = activeEloForIndex(i);
-    _eloValue.text = [NSString stringWithFormat:@"%ld%@", (long)e, (!gUseMaia && e > 1500) ? @" ⚠️" : @""];
-    _eloTier.text = eloTierName(e);
-}
-- (void)eloDone:(UISlider *)s {
-    gElo = activeEloForIndex((int)roundf(s.value));
-    savePrefs(); gLastFen = nil;
-    dbg([NSString stringWithFormat:@"ELO set to %ld (%@)", (long)gElo, gUseMaia ? @"maia" : @"stockfish"]);
-    if (!gUseMaia && gElo > 1500) {
-        UIAlertController *w = [UIAlertController alertControllerWithTitle:@"⚠️ Ban Risk"
-            message:@"Playing above ~1500 strength is much easier for Chess.com's fair-play system to detect and greatly increases your ban risk. Lower ELO is safer."
-            preferredStyle:UIAlertControllerStyleAlert];
-        [w addAction:[UIAlertAction actionWithTitle:@"I understand" style:UIAlertActionStyleDestructive handler:nil]];
-        [self.window.rootViewController presentViewController:w animated:YES completion:nil];
-    }
 }
 - (void)evalSeg:(UISegmentedControl *)s { gShowWinPct = (s.selectedSegmentIndex == 1); savePrefs(); redrawArrows(); }
 - (void)arrSeg:(UISegmentedControl *)s { gArrowCount = s.selectedSegmentIndex + 1; savePrefs(); gLastFen = nil; }
