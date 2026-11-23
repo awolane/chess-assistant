@@ -1492,157 +1492,96 @@ static void clampGeloToActiveRange(void) {
     @try {
         for (UIView *v in [_stack.arrangedSubviews copy]) { [_stack removeArrangedSubview:v]; [v removeFromSuperview]; }
 
+        // Верхняя шапка с переливающимся черно-красным акцентом
+        UIView *headerBox = [[UIView alloc] init];
+        headerBox.backgroundColor = [UIColor colorWithRed:0.10 green:0.03 blue:0.04 alpha:0.85];
+        headerBox.layer.cornerRadius = 14;
+        headerBox.layer.borderWidth = 1.0;
+        headerBox.layer.borderColor = [UIColor colorWithRed:0.88 green:0.12 blue:0.18 alpha:0.45].CGColor;
+
         UIButton *x = [UIButton buttonWithType:UIButtonTypeSystem];
         [x setTitle:@"✕" forState:UIControlStateNormal];
-        x.titleLabel.font = [UIFont systemFontOfSize:20];
-        [x setTitleColor:[UIColor colorWithWhite:0.7 alpha:1] forState:UIControlStateNormal];
+        x.titleLabel.font = [UIFont boldSystemFontOfSize:16];
+        [x setTitleColor:[UIColor colorWithWhite:0.85 alpha:1] forState:UIControlStateNormal];
         [x addTarget:self action:@selector(closeTap) forControlEvents:UIControlEventTouchUpInside];
         [x setContentHuggingPriority:1000 forAxis:UILayoutConstraintAxisHorizontal];
-        UIStackView *hdr = [[UIStackView alloc] initWithArrangedSubviews:@[
-            [self lbl:@"Recrouser Dominate" size:22 weight:UIFontWeightBold color:UIColor.whiteColor], x]];
-        hdr.axis = UILayoutConstraintAxisHorizontal; hdr.alignment = UIStackViewAlignmentCenter;
-        [_stack addArrangedSubview:hdr];
-    UILabel *creatorLbl = [self lbl:@"creator: recrouser" size:12 weight:UIFontWeightMedium color:[UIColor colorWithRed:1.0 green:0.55 blue:0.55 alpha:0.85]];
-    [_stack addArrangedSubview:creatorLbl];
-    [_stack setCustomSpacing:2 afterView:hdr];
-        NSString *sub = [NSString stringWithFormat:@"%@ · Depth %ld · %@ · Playing %@",
+
+        UILabel *titleLbl = [self lbl:@"Recrouser Dominate" size:19 weight:UIFontWeightBold color:[UIColor whiteColor]];
+        UIStackView *hdr = [[UIStackView alloc] initWithArrangedSubviews:@[titleLbl, x]];
+        hdr.axis = UILayoutConstraintAxisHorizontal;
+        hdr.alignment = UIStackViewAlignmentCenter;
+
+        NSString *sub = [NSString stringWithFormat:@"%@ • Depth %ld • %@ • %@",
             gEnabled ? @"Active" : @"Paused",
             (long)eloToDepth(gElo),
-            gUseMaia ? @"Maia" : @"Stockfish",
-            gMyColor == 0 ? @"White" : (gMyColor == 1 ? @"Black" : @"—")];
-        UILabel *subLbl = [self lbl:sub size:13 weight:UIFontWeightSemibold color:[UIColor colorWithWhite:0.75 alpha:1]];
-        [_stack addArrangedSubview:subLbl];
-        [_stack setCustomSpacing:12 afterView:hdr];
+            gUseMaia ? @"Maia AI" : @"Stockfish 18",
+            gMyColor == 0 ? @"White" : (gMyColor == 1 ? @"Black" : @"Auto")];
+        UILabel *subLbl = [self lbl:sub size:11 weight:UIFontWeightSemibold color:[UIColor colorWithRed:0.95 green:0.25 blue:0.30 alpha:1.0]];
 
-        NSString *eco = ecoName();
-        if (eco.length) {
-            UILabel *ecoLbl = [self lbl:[NSString stringWithFormat:@"📖 %@", eco]
-                                   size:12 weight:UIFontWeightSemibold
-                                  color:[UIColor colorWithRed:0.55 green:0.75 blue:0.95 alpha:1]];
-            [_stack addArrangedSubview:ecoLbl];
-            [_stack setCustomSpacing:10 afterView:subLbl];
-        }
+        UIStackView *hdrCol = [[UIStackView alloc] initWithArrangedSubviews:@[hdr, subLbl]];
+        hdrCol.axis = UILayoutConstraintAxisVertical;
+        hdrCol.spacing = 4;
+        hdrCol.translatesAutoresizingMaskIntoConstraints = NO;
+        [headerBox addSubview:hdrCol];
+        [NSLayoutConstraint activateConstraints:@[
+            [hdrCol.topAnchor constraintEqualToAnchor:headerBox.topAnchor constant:10],
+            [hdrCol.bottomAnchor constraintEqualToAnchor:headerBox.bottomAnchor constant:-10],
+            [hdrCol.leadingAnchor constraintEqualToAnchor:headerBox.leadingAnchor constant:12],
+            [hdrCol.trailingAnchor constraintEqualToAnchor:headerBox.trailingAnchor constant:-12]
+        ]];
+        [_stack addArrangedSubview:headerBox];
 
-        UIView *stats = [self statsCard];
-        [_stack addArrangedSubview:stats];
+        // Панель навигации (4 логические вкладки в стиле Xentrix)
+        UISegmentedControl *tabSeg = [[UISegmentedControl alloc] initWithItems:@[@"Engine", @"Visual", @"Stats", @"Misc"]];
+        tabSeg.selectedSegmentIndex = 0;
+        [self styleSeg:tabSeg];
+        [tabSeg addTarget:self action:@selector(onTabSwitch:) forControlEvents:UIControlEventValueChanged];
+        [_stack addArrangedSubview:tabSeg];
 
-    UISegmentedControl *tabSeg = [[UISegmentedControl alloc] initWithItems:@[@"Rage", @"Appearance", @"Credits"]];
-    tabSeg.selectedSegmentIndex = 0;
-    [self styleSeg:tabSeg];
-    [tabSeg addTarget:self action:@selector(onTabSwitch:) forControlEvents:UIControlEventValueChanged];
-    [_stack addArrangedSubview:tabSeg];
+        // 4 контейнера вкладок
+        UIStackView *engineTab = [[UIStackView alloc] init];
+        engineTab.axis = UILayoutConstraintAxisVertical; engineTab.spacing = 10;
 
-    UIStackView *rageStack = [[UIStackView alloc] init];
-    rageStack.axis = UILayoutConstraintAxisVertical;
-    rageStack.spacing = 14;
+        UIStackView *visualTab = [[UIStackView alloc] init];
+        visualTab.axis = UILayoutConstraintAxisVertical; visualTab.spacing = 10; visualTab.hidden = YES;
 
-    UIStackView *appStack = [[UIStackView alloc] init];
-    appStack.axis = UILayoutConstraintAxisVertical;
-    appStack.spacing = 14;
-    appStack.hidden = YES;
+        UIStackView *statsTab = [[UIStackView alloc] init];
+        statsTab.axis = UILayoutConstraintAxisVertical; statsTab.spacing = 10; statsTab.hidden = YES;
 
-    UIStackView *credStack = [[UIStackView alloc] init];
-    credStack.axis = UILayoutConstraintAxisVertical;
-    credStack.spacing = 12;
-    credStack.hidden = YES;
+        UIStackView *miscTab = [[UIStackView alloc] init];
+        miscTab.axis = UILayoutConstraintAxisVertical; miscTab.spacing = 10; miscTab.hidden = YES;
 
-    [credStack addArrangedSubview:[self sectionLabel:@"Credits"]];
-    UILabel *tgLbl = [self lbl:@"Telegram: t.me/recrouser" size:14 weight:UIFontWeightSemibold color:[UIColor whiteColor]];
-    UILabel *ytLbl = [self lbl:@"YouTube: https://youtube.com" size:13 weight:UIFontWeightMedium color:[UIColor whiteColor]];
-    ytLbl.numberOfLines = 0;
-        UIStackView *credCol = [[UIStackView alloc] initWithArrangedSubviews:@[tgLbl, [self sep], ytLbl]];
-    credCol.axis = UILayoutConstraintAxisVertical;
-    credCol.spacing = 10;
-    [credStack addArrangedSubview:[self group:credCol]];
-
-
-    [_stack addArrangedSubview:rageStack];
-    [_stack addArrangedSubview:appStack];
-    [_stack addArrangedSubview:credStack];
-
-    objc_setAssociatedObject(self, "rageStack", rageStack, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(self, "appStack", appStack, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(self, "credStack", credStack, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-        // ---- ENGINE ----
-        [rageStack addArrangedSubview:[self sectionLabel:@"Engine"]];
+        // ==================== TAB 1: ENGINE & AUTO PLAY ====================
+        [engineTab addArrangedSubview:[self sectionLabel:@"Engine Core"]];
         int eloCnt = 0; const NSInteger *eloLvls = activeEloLevels(&eloCnt);
-
         UISegmentedControl *engSeg = [[UISegmentedControl alloc] initWithItems:@[@"SF18", @"MAIA"]];
         engSeg.selectedSegmentIndex = gUseMaia ? 1 : 0;
         [self styleSeg:engSeg];
         [engSeg addTarget:self action:@selector(engSeg:) forControlEvents:UIControlEventValueChanged];
 
-        _eloValue = [self lbl:[NSString stringWithFormat:@"%ld", (long)gElo] size:16 weight:UIFontWeightSemibold color:CH_ACCENT];
+        _eloValue = [self lbl:[NSString stringWithFormat:@"%ld", (long)gElo] size:15 weight:UIFontWeightBold color:CH_ACCENT];
         NSString *tierText = gUseMaia
-            ? [NSString stringWithFormat:@"%@ · tuned for Maia (%ld–%ld)", eloTierName(gElo), (long)eloLvls[0], (long)eloLvls[eloCnt-1]]
+            ? [NSString stringWithFormat:@"%@ • tuned for Maia (%ld–%ld)", eloTierName(gElo), (long)eloLvls[0], (long)eloLvls[eloCnt - 1]]
             : eloTierName(gElo);
-        _eloTier  = [self lbl:tierText size:12 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.6 alpha:1]];
+        _eloTier = [self lbl:tierText size:11 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.65 alpha:1.0]];
         [_eloValue setContentHuggingPriority:1000 forAxis:UILayoutConstraintAxisHorizontal];
         UISlider *elo = [[UISlider alloc] init];
         elo.minimumValue = 0; elo.maximumValue = eloCnt - 1; elo.value = activeEloNearestIndex(gElo);
         elo.minimumTrackTintColor = CH_ACCENT;
         [elo addTarget:self action:@selector(eloSlide:) forControlEvents:UIControlEventValueChanged];
         [elo addTarget:self action:@selector(eloDone:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
-        NSString *strengthTitle = gUseMaia ? @"Strength (Human-like)" : @"Strength (ELO)";
+        NSString *strengthTitle = gUseMaia ? @"Strength (Human)" : @"Strength (ELO)";
         UIStackView *eloHdr = [[UIStackView alloc] initWithArrangedSubviews:@[
-            [self lbl:strengthTitle size:15 weight:UIFontWeightMedium color:UIColor.whiteColor], _eloValue]];
+            [self lbl:strengthTitle size:14 weight:UIFontWeightMedium color:[UIColor whiteColor]], _eloValue]];
         eloHdr.axis = UILayoutConstraintAxisHorizontal; eloHdr.distribution = UIStackViewDistributionFill;
         UIStackView *eloCol = [[UIStackView alloc] initWithArrangedSubviews:@[
             [self rowTitle:@"Engine" control:engSeg], [self sep],
             eloHdr, [self sliderRow:elo], _eloTier]];
         eloCol.axis = UILayoutConstraintAxisVertical; eloCol.spacing = 8;
-        [rageStack addArrangedSubview:[self group:eloCol]];
+        [engineTab addArrangedSubview:[self group:eloCol]];
 
-        // ---- DISPLAY ----
-         [rageStack addArrangedSubview:[self sectionLabel:@"Display"]];
-
-        UISegmentedControl *evalSeg = [[UISegmentedControl alloc] initWithItems:@[@"Centipawn", @"Win %"]];
-        evalSeg.selectedSegmentIndex = gShowWinPct ? 1 : 0; [self styleSeg:evalSeg];
-        [evalSeg addTarget:self action:@selector(evalSeg:) forControlEvents:UIControlEventValueChanged];
-        UISegmentedControl *arrSeg = [[UISegmentedControl alloc] initWithItems:@[@"1", @"2", @"3"]];
-        arrSeg.selectedSegmentIndex = MIN(2, MAX(0, (int)gArrowCount - 1)); [self styleSeg:arrSeg];
-        [arrSeg addTarget:self action:@selector(arrSeg:) forControlEvents:UIControlEventValueChanged];
-        UISegmentedControl *thickSeg = [[UISegmentedControl alloc] initWithItems:@[@"Thin", @"Med", @"Thick"]];
-        thickSeg.selectedSegmentIndex = gArrowThick < 0.85 ? 0 : (gArrowThick > 1.2 ? 2 : 1); [self styleSeg:thickSeg];
-        [thickSeg addTarget:self action:@selector(thickSeg:) forControlEvents:UIControlEventValueChanged];
-
-        _opValue = [self lbl:[NSString stringWithFormat:@"%d%%", (int)round(gArrowAlpha * 100)]
-                         size:15 weight:UIFontWeightSemibold color:CH_ACCENT];
-        [_opValue setContentHuggingPriority:1000 forAxis:UILayoutConstraintAxisHorizontal];
-        UISlider *op = [[UISlider alloc] init];
-        op.minimumValue = 0.3; op.maximumValue = 1.0; op.value = gArrowAlpha; op.minimumTrackTintColor = CH_ACCENT;
-        [op addTarget:self action:@selector(opSlide:) forControlEvents:UIControlEventValueChanged];
-
-        UIStackView *grp = [[UIStackView alloc] initWithArrangedSubviews:@[
-            [self rowTitle:@"Evaluation" control:evalSeg], [self sep],
-            [self rowTitle:@"Arrows" control:arrSeg], [self sep],
-            [self rowTitle:@"Thickness" control:thickSeg], [self sep],
-            [self rowTitle:@"Eval Bar" control:[self switchOn:gShowEvalBar sel:@selector(swEvalBar:)]], [self sep],
-            [self rowTitle:@"Opacity" control:_opValue],
-            [self sliderRow:op]]];
-        grp.axis = UILayoutConstraintAxisVertical; grp.spacing = 12;
-        [rageStack addArrangedSubview:[self group:grp]];
-
-        // ---- FEATURES ----
-            [appStack addArrangedSubview:[self sectionLabel:@"Features"]];
-
-
-        NSMutableArray *swRows = [NSMutableArray array];
-        [swRows addObject:[self rowTitle:@"Move Analysis" control:[self switchOn:gTrackQuality sel:@selector(swAnalysis:)]]];
-        [swRows addObject:[self sep]];
-        [swRows addObject:[self rowTitle:@"Eval Labels" control:[self switchOn:gShowEvalLabels sel:@selector(swLabels:)]]];
-        [swRows addObject:[self sep]];
-        [swRows addObject:[self rowTitle:@"Color by Eval" control:[self switchOn:gArrowEvalColor sel:@selector(swColor:)]]];
-        UIStackView *sw = [[UIStackView alloc] initWithArrangedSubviews:swRows];
-        sw.axis = UILayoutConstraintAxisVertical; sw.spacing = 14;
-        [appStack addArrangedSubview:[self group:sw]];
-
-        // ---- AUTO PLAY ----
-        [rageStack addArrangedSubview:[self sectionLabel:@"Auto Play"]];
-
-        _apDelayValue = [self lbl:[NSString stringWithFormat:@"%.1fs", gAutoPlayDelay]
-                             size:15 weight:UIFontWeightSemibold color:CH_ACCENT];
+        [engineTab addArrangedSubview:[self sectionLabel:@"Auto Play"]];
+        _apDelayValue = [self lbl:[NSString stringWithFormat:@"%.1fs", gAutoPlayDelay] size:14 weight:UIFontWeightSemibold color:CH_ACCENT];
         [_apDelayValue setContentHuggingPriority:1000 forAxis:UILayoutConstraintAxisHorizontal];
         UISlider *apDelay = [[UISlider alloc] init];
         apDelay.minimumValue = 0.0; apDelay.maximumValue = 5.0;
@@ -1650,8 +1589,7 @@ static void clampGeloToActiveRange(void) {
         [apDelay addTarget:self action:@selector(apDelaySlide:) forControlEvents:UIControlEventValueChanged];
         [apDelay addTarget:self action:@selector(apDelayDone:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
 
-        _apJitterValue = [self lbl:[NSString stringWithFormat:@"±%.1fs", gAutoPlayJitterRange]
-                              size:15 weight:UIFontWeightSemibold color:CH_ACCENT];
+        _apJitterValue = [self lbl:[NSString stringWithFormat:@"±%.1fs", gAutoPlayJitterRange] size:14 weight:UIFontWeightSemibold color:CH_ACCENT];
         [_apJitterValue setContentHuggingPriority:1000 forAxis:UILayoutConstraintAxisHorizontal];
         UISlider *apJitter = [[UISlider alloc] init];
         apJitter.minimumValue = 0.0; apJitter.maximumValue = 2.0;
@@ -1659,8 +1597,7 @@ static void clampGeloToActiveRange(void) {
         [apJitter addTarget:self action:@selector(apJitterSlide:) forControlEvents:UIControlEventValueChanged];
         [apJitter addTarget:self action:@selector(apJitterDone:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
 
-        _apSecondPctValue = [self lbl:[NSString stringWithFormat:@"%ld%%", (long)gAutoPlaySecondBestPct]
-                     size:15 weight:UIFontWeightSemibold color:CH_ACCENT];
+        _apSecondPctValue = [self lbl:[NSString stringWithFormat:@"%ld%%", (long)gAutoPlaySecondBestPct] size:14 weight:UIFontWeightSemibold color:CH_ACCENT];
         [_apSecondPctValue setContentHuggingPriority:1000 forAxis:UILayoutConstraintAxisHorizontal];
         UISlider *apSecondPct = [[UISlider alloc] init];
         apSecondPct.minimumValue = 0.0; apSecondPct.maximumValue = 50.0;
@@ -1680,41 +1617,84 @@ static void clampGeloToActiveRange(void) {
             [self sep],
             [self rowTitle:@"2nd Move Chance" control:[self switchOn:gAutoPlaySecondBest sel:@selector(swAutoSecondBest:)]],
             [self rowTitle:@"2nd Move %" control:_apSecondPctValue],
-            [self sliderRow:apSecondPct],
-            [self lbl:@"Wait after opponent's move before auto playing." size:11 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.5 alpha:1]]]];
-        apCol.axis = UILayoutConstraintAxisVertical; apCol.spacing = 12;
-        [rageStack addArrangedSubview:[self group:apCol]];
+            [self sliderRow:apSecondPct]
+        ]];
+        apCol.axis = UILayoutConstraintAxisVertical; apCol.spacing = 8;
+        [engineTab addArrangedSubview:[self group:apCol]];
 
-        // ---- CONTROLS ----
-            [appStack addArrangedSubview:[self sectionLabel:@"Controls"]];
-
-
-       [appStack addArrangedSubview:[self bigBtn:(gEnabled ? @"Pause Assistant" : @"Enable Assistant") color:(gEnabled ? [UIColor colorWithRed:0.75 green:0.10 blue:0.15 alpha:1.0] : [UIColor colorWithWhite:0.25 alpha:0.9]) sel:@selector(enableTap)]];
-
-        UIButton *prefBtn = [self smallBtn:@"⚡ Preferred Settings (Ban-Safe)" sel:@selector(preferredTap)];
-        prefBtn.backgroundColor = [CH_ACCENT colorWithAlphaComponent:0.25];
-        [appStack addArrangedSubview:prefBtn];
-
-        [_scroll setContentOffset:CGPointZero];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            NSMutableString *dump = [NSMutableString string];
-            for (UIView *v in _stack.arrangedSubviews) {
-                [dump appendFormat:@"[%@ %@] ", NSStringFromClass([v class]), NSStringFromCGRect(v.frame)];
-            }
-            dbg([NSString stringWithFormat:@"PANEL LAYOUT scroll=%@ stack=%@\n%@", NSStringFromCGRect(_scroll.frame), NSStringFromCGRect(_stack.frame), dump]);
-        });
-    } @catch (NSException *e) {
-        dbg([NSString stringWithFormat:@"PANEL ERR: %@ — %@", e.name, e.reason]);
-    }
+        // ==================== TAB 2: VISUAL & ARROWS ====================
+        [visualTab addArrangedSubview:[self sectionLabel:@"Arrows & Shimmer"]];
+        UISegmentedControl *evalSeg = [[UISegmentedControl alloc] initWithItems:@[@"Centipawn", @"Win %"]];
+        evalSeg.selectedSegmentIndex = gShowWinPct ? 1 : 0; [self styleSeg:evalSeg];
+        [evalSeg addTarget:self action:@selector(evalSeg:) forControlEvents:UIControlEventValueChanged];
+        UISegmentedControl *arrSeg = [[UISegmentedControl alloc] initWithItems:@[@"1", @"2", @"3"]];
+        arrSeg.selectedSegmentIndex = MIN(2, MAX(0, (int)gArrowCount - 1)); [self styleSeg:arrSeg];
+        [arrSeg addTarget:self action:@selector(arrSeg:) forControlEvents:UIControlEventValueChanged];
+        UISegmentedControl *thickSeg = [[UISegmentedControl alloc] initWithItems:@[@"Thin", @"Med", @"Thick"]];
+thickSeg.selectedSegmentIndex = gArrowThick < 0.85 ? 0 : (gArrowThick > 1.2 ? 2 : 1); [self styleSeg:thickSeg];
+[thickSeg addTarget:self action:@selector(thickSeg:) forControlEvents:UIControlEventValueChanged];
+_opValue = [self lbl:[NSString stringWithFormat:@"%d%%", (int)round(gArrowAlpha * 100)] size:14 weight:UIFontWeightSemibold color:CH_ACCENT];
+[_opValue setContentHuggingPriority:1000 forAxis:UILayoutConstraintAxisHorizontal];
+UISlider *op = [[UISlider alloc] init];
+op.minimumValue = 0.3; op.maximumValue = 1.0; op.value = gArrowAlpha; op.minimumTrackTintColor = CH_ACCENT;
+[op addTarget:self action:@selector(opSlide:) forControlEvents:UIControlEventValueChanged];
+UIStackView *dispCol = [[UIStackView alloc] initWithArrangedSubviews:@[
+[self rowTitle:@"Evaluation" control:evalSeg], [self sep],
+[self rowTitle:@"Arrows Count" control:arrSeg], [self sep],
+[self rowTitle:@"Thickness" control:thickSeg], [self sep],
+[self rowTitle:@"Opacity" control:_opValue], [self sliderRow:op], [self sep],
+[self rowTitle:@"Eval Bar" control:[self switchOn:gShowEvalBar sel:@selector(swEvalBar:)]], [self sep],
+[self rowTitle:@"Eval Labels" control:[self switchOn:gShowEvalLabels sel:@selector(swLabels:)]], [self sep],
+[self rowTitle:@"Shimmer Mode" control:[self switchOn:gArrowEvalColor sel:@selector(swColor:)]]
+]];
+dispCol.axis = UILayoutConstraintAxisVertical; dispCol.spacing = 8;
+[visualTab addArrangedSubview:[self group:dispCol]];
+// ==================== TAB 3: STATS & ANALYSIS ====================
+[statsTab addArrangedSubview:[self sectionLabel:@"Match Accuracy"]];
+NSString *eco = ecoName();
+if (eco.length) {
+UILabel *ecoLbl = [self lbl:[NSString stringWithFormat:@"Opening: %@", eco] size:12 weight:UIFontWeightSemibold color:[UIColor colorWithRed:0.95 green:0.35 blue:0.40 alpha:1.0]];
+[statsTab addArrangedSubview:ecoLbl];
 }
-- (void)onTabSwitch:(UISegmentedControl *)seg {
-    UIView *r = objc_getAssociatedObject(self, "rageStack");
-    UIView *a = objc_getAssociatedObject(self, "appStack");
-    UIView *c = objc_getAssociatedObject(self, "credStack");
-    r.hidden = (seg.selectedSegmentIndex != 0);
-    a.hidden = (seg.selectedSegmentIndex != 1);
-    c.hidden = (seg.selectedSegmentIndex != 2);
+[statsTab addArrangedSubview:[self statsCard]];
+UIStackView *anaCol = [[UIStackView alloc] initWithArrangedSubviews:@[
+[self rowTitle:@"Move Analysis" control:[self switchOn:gTrackQuality sel:@selector(swAnalysis:)]]
+]];
+anaCol.axis = UILayoutConstraintAxisVertical;
+[statsTab addArrangedSubview:[self group:anaCol]];
+// ==================== TAB 4: CONTROLS & CREDITS ====================
+[miscTab addArrangedSubview:[self sectionLabel:@"Quick Actions"]];
+NSString *pauseTitle = gEnabled ? @"Pause Assistant" : @"Resume Assistant";
+UIColor *pauseColor = gEnabled ? CH_ACCENT : [UIColor colorWithRed:0.15 green:0.15 blue:0.18 alpha:1.0];
+[miscTab addArrangedSubview:[self bigBtn:pauseTitle color:pauseColor sel:@selector(enableTap)]];
+[miscTab addArrangedSubview:[self smallBtn:@"⚡ Preferred Settings (Ban-Safe)" sel:@selector(preferredTap)]];
+UIStackView *copyRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+[self smallBtn:@"Copy FEN" sel:@selector(copyFenTap)],
+[self smallBtn:@"Copy PGN" sel:@selector(pgnTap)]
+]];
+copyRow.axis = UILayoutConstraintAxisHorizontal; copyRow.spacing = 8; copyRow.distribution = UIStackViewDistributionFillEqually;
+[miscTab addArrangedSubview:copyRow];
+[miscTab addArrangedSubview:[self sectionLabel:@"Credits"]];
+UILabel *tgLbl = [self lbl:@"Telegram: t.me/recrouser" size:13 weight:UIFontWeightSemibold color:[UIColor whiteColor]];
+UILabel *ytLbl = [self lbl:@"YouTube: https://youtube.com" size:12 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.75 alpha:1.0]];
+ytLbl.numberOfLines = 0;
+UIStackView *credCol = [[UIStackView alloc] initWithArrangedSubviews:@[tgLbl, [self sep], ytLbl]];
+credCol.axis = UILayoutConstraintAxisVertical; credCol.spacing = 8;
+[miscTab addArrangedSubview:[self group:credCol]];
+[_stack addArrangedSubview:engineTab];
+[_stack addArrangedSubview:visualTab];
+[_stack addArrangedSubview:statsTab];
+[_stack addArrangedSubview:miscTab];
+objc_setAssociatedObject(self, "engineTab", engineTab, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+objc_setAssociatedObject(self, "visualTab", visualTab, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+objc_setAssociatedObject(self, "statsTab", statsTab, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+objc_setAssociatedObject(self, "miscTab", miscTab, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+[_scroll setContentOffset:CGPointZero];
+} @catch (NSException *e) {
+dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
 }
+}
+* (void)onTabSwitch:(UISegmentedControl *)seg { NSArray *keys = @[@"engineTab", @"visualTab", @"statsTab", @"miscTab"]; NSInteger idx = seg.selectedSegmentIndex; for (NSInteger i = 0; i < 4; i++) { UIView *tab = objc_getAssociatedObject(self, [keys[i] UTF8String]); if (i == idx) { tab.alpha = 0.0; tab.hidden = NO; tab.transform = CGAffineTransformMakeTranslation(0, 6); [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{ tab.alpha = 1.0; tab.transform = CGAffineTransformIdentity; } completion:nil]; } else { tab.hidden = YES; } } [_scroll setContentOffset:CGPointZero animated:YES]; }
 
 - (void)eloSlide:(UISlider *)s {
     int i = (int)roundf(s.value); s.value = i;
