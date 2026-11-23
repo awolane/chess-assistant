@@ -7,6 +7,7 @@
 #import <malloc/malloc.h>
 #import "engine.h"
 #import "maia.h"
+#import <AudioToolbox/AudioToolbox.h>
 
 #define CH_ACCENT [UIColor colorWithRed:0.85 green:0.15 blue:0.20 alpha:1.0]
 
