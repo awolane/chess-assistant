@@ -1298,6 +1298,7 @@ static void clampGeloToActiveRange(void) {
 - (UISwitch *)switchOn:(BOOL)on sel:(SEL)sel {
     UISwitch *sw = [[UISwitch alloc] init];
     sw.on = on; sw.onTintColor = CH_ACCENT;
+    [sw addTarget:self action:@selector(playUiSound) forControlEvents:UIControlEventValueChanged];
     [sw addTarget:self action:sel forControlEvents:UIControlEventValueChanged];
     return sw;
 }
@@ -1318,6 +1319,7 @@ static void clampGeloToActiveRange(void) {
     b.titleLabel.font = [UIFont boldSystemFontOfSize:16];
     b.backgroundColor = col; b.layer.cornerRadius = 12;
     [b.heightAnchor constraintEqualToConstant:48].active = YES;
+    [b addTarget:self action:@selector(playUiSound) forControlEvents:UIControlEventTouchUpInside];
     [b addTarget:self action:sel forControlEvents:UIControlEventTouchUpInside];
     return b;
 }
@@ -1329,8 +1331,12 @@ static void clampGeloToActiveRange(void) {
     b.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
     b.backgroundColor = [UIColor colorWithRed:0.45 green:0.06 blue:0.10 alpha:0.85];
     [b.heightAnchor constraintEqualToConstant:44].active = YES;
+    [b addTarget:self action:@selector(playUiSound) forControlEvents:UIControlEventTouchUpInside];
     [b addTarget:self action:sel forControlEvents:UIControlEventTouchUpInside];
     return b;
+}
+- (void)playUiSound {
+    AudioServicesPlaySystemSound(1104);
 }
 
 - (UIView *)statsCard {
@@ -1667,6 +1673,8 @@ anaCol.axis = UILayoutConstraintAxisVertical;
 NSString *pauseTitle = gEnabled ? @"Pause Assistant" : @"Resume Assistant";
 UIColor *pauseColor = gEnabled ? CH_ACCENT : [UIColor colorWithRed:0.15 green:0.15 blue:0.18 alpha:1.0];
 [miscTab addArrangedSubview:[self bigBtn:pauseTitle color:pauseColor sel:@selector(enableTap)]];
+NSString *profTitle = gSpoofProfileName.length ? [NSString stringWithFormat:@"🎭 Profile: %@ (%ld)", gSpoofProfileName, (long)gSpoofProfileElo] : @"🎭 Change Profile (Default)";
+[miscTab addArrangedSubview:[self smallBtn:profTitle sel:@selector(spoofProfileTap)]];
 [miscTab addArrangedSubview:[self smallBtn:@"⚡ Preferred Settings (Ban-Safe)" sel:@selector(preferredTap)]];
 UIStackView *copyRow = [[UIStackView alloc] initWithArrangedSubviews:@[
 [self smallBtn:@"Copy FEN" sel:@selector(copyFenTap)],
@@ -1675,12 +1683,19 @@ UIStackView *copyRow = [[UIStackView alloc] initWithArrangedSubviews:@[
 copyRow.axis = UILayoutConstraintAxisHorizontal; copyRow.spacing = 8; copyRow.distribution = UIStackViewDistributionFillEqually;
 [miscTab addArrangedSubview:copyRow];
 [miscTab addArrangedSubview:[self sectionLabel:@"Credits"]];
-UILabel *tgLbl = [self lbl:@"Telegram: t.me/recrouser" size:13 weight:UIFontWeightSemibold color:[UIColor whiteColor]];
-UILabel *ytLbl = [self lbl:@"Seth & recrouser owned" size:12 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.75 alpha:1.0]];
-ytLbl.numberOfLines = 0;
-UIStackView *credCol = [[UIStackView alloc] initWithArrangedSubviews:@[tgLbl, [self sep], ytLbl]];
-credCol.axis = UILayoutConstraintAxisVertical; credCol.spacing = 8;
-[miscTab addArrangedSubview:[self group:credCol]];
+    UIButton *tgBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [tgBtn setTitle:@"Telegram: t.me/recrouser" forState:UIControlStateNormal];
+    [tgBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    tgBtn.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    tgBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+    [tgBtn addTarget:self action:@selector(openTgLink) forControlEvents:UIControlEventTouchUpInside];
+
+    UILabel *dcLbl = [self lbl:@"Discord: @recro.user" size:12 weight:UIFontWeightMedium color:[UIColor colorWithWhite:0.85 alpha:1]];
+    UILabel *ytLbl = [self lbl:@"Seth & recrouser owned" size:12 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.65 alpha:1]];
+    ytLbl.numberOfLines = 0;
+    UIStackView *credCol = [[UIStackView alloc] initWithArrangedSubviews:@[tgBtn, [self sep], dcLbl, [self sep], ytLbl]];
+    credCol.axis = UILayoutConstraintAxisVertical; credCol.spacing = 8;
+    [miscTab addArrangedSubview:[self group:credCol]];
 [_stack addArrangedSubview:engineTab];
 [_stack addArrangedSubview:visualTab];
 [_stack addArrangedSubview:statsTab];
@@ -1722,6 +1737,7 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
     dbg([NSString stringWithFormat:@"engine: %@ — strength range %@", gUseMaia ? @"MAIA" : @"SF18",
          gUseMaia ? @"900–2000 (human-like)" : @"400–3500"]);
     [self populate];
+
 }
 - (void)eloSlide:(UISlider *)s {
     int c = 0;
@@ -1732,6 +1748,8 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
     s.value = (float)idx;
     NSInteger val = lvls[idx];
     _eloValue.text = [NSString stringWithFormat:@"%ld", (long)val];
+    static int lastEloIdx = -1;
+    if (idx != lastEloIdx) { lastEloIdx = idx; [self playUiSound]; }
     _eloTier.text = gUseMaia
         ? [NSString stringWithFormat:@"%@ • tuned for Maia (%ld–%ld)", eloTierName(val), (long)lvls[0], (long)lvls[c - 1]]
         : eloTierName(val);
@@ -1744,6 +1762,7 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
     if (idx < 0) idx = 0;
     if (idx >= c) idx = c - 1;
     gElo = lvls[idx];
+    [self playUiSound];
     savePrefs();
     gLastFen = nil;
     dbg([NSString stringWithFormat:@"ELO set to %ld", (long)gElo]);
@@ -1787,6 +1806,7 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
     if (v > 50) v = 50;
     s.value = (float)v;
     _apSecondPctValue.text = [NSString stringWithFormat:@"%ld%%", (long)v];
+    [self playUiSound];
 }
 - (void)apSecondPctDone:(UISlider *)s {
     NSInteger v = (NSInteger)lround(s.value);
@@ -1794,6 +1814,7 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
     if (v > 50) v = 50;
     gAutoPlaySecondBestPct = v;
     savePrefs();
+    [self playUiSound];
 }
 - (void)pgnTap {
     NSString *pgn = buildPGN();
@@ -1816,6 +1837,7 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
 }
 - (void)preferredTap {
     gArrowCount   = 3;
+    [self playUiSound];
     gArrowAlpha   = 0.3;
     gShowWinPct   = YES;
     gArrowThick   = 0.7;
@@ -1837,11 +1859,25 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
 - (void)enableTap { gEnabled = !gEnabled; savePrefs(); if (!gEnabled) clearArrow(); [self populate]; }
 - (void)debugTap {
     [self animateOut];
+- (void)openTgLink {
+    [self playUiSound];
+    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://t.me/recrouser"] options:@{} completionHandler:nil];
+}
+
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.32 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ showDebugLog(); });
 }
 - (void)creditsTap {
     [self animateOut];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.32 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ showCredits(); });
+}
+- (void)spoofProfileTap {
+    [self playUiSound];
+    static NSInteger sIdx = 0;
+    sIdx = (sIdx + 1) % 5;
+    selectSpoofPreset(sIdx);
+    NSString *msg = gSpoofProfileName.length ? [NSString stringWithFormat:@"Profile: %@ (%ld)", gSpoofProfileName, (long)gSpoofProfileElo] : @"Profile: Default";
+    showQualityToast(msg, CH_ACCENT);
+    [self populate];
 }
 - (void)closeTap { [self animateOut]; }
 
@@ -2589,6 +2625,7 @@ static void fetchMove(NSString *fen) {
 
     int multipv = gTrackQuality ? MAX((int)gArrowCount, 2) : (int)gArrowCount;
     if (gElo < 1600) multipv = MAX(multipv, 8);
+    if (gFastMate && depth < 14) depth = 14;
     else if (gElo < 2000) multipv = MAX(multipv, 4);
     EngineGo([fen UTF8String], (int)depth, (int)gElo, multipv,
              ^(const EngineLine *lines, int count) {
@@ -3011,7 +3048,35 @@ static NSString *gLastBotPlacement = nil;
 static int       gBotSide = 0;
 static char      gPrevBotBoard[8][8];
 static BOOL      gHavePrevBoard = NO;
+static NSString *gSpoofProfileName = nil;
+static NSInteger gSpoofProfileElo = 0;
 
+static void applySpoofProfile(NSString *name, NSInteger elo) {
+    gSpoofProfileName = [name copy];
+    gSpoofProfileElo = elo;
+    if (elo > 0) {
+        gElo = elo;
+        savePrefs();
+    }
+}
+static void selectSpoofPreset(NSInteger idx) {
+    switch (idx) {
+        case 1: applySpoofProfile(@"Magnus Carlsen", 2830); break;
+        case 2: applySpoofProfile(@"Hikaru Nakamura", 2802); break;
+        case 3: applySpoofProfile(@"Fabiano Caruana", 2805); break;
+        case 4: applySpoofProfile(@"Ding Liren", 2745); break;
+        default: applySpoofProfile(nil, 0); break;
+    }
+}
+static NSString *spoofDisplayName(NSString *orig) {
+    if (gSpoofProfileName.length > 0) return gSpoofProfileName;
+    return orig;
+}
+
+static NSInteger spoofDisplayElo(NSInteger orig) {
+    if (gSpoofProfileElo > 0) return gSpoofProfileElo;
+    return orig;
+}
 static NSString *buildBotFEN(UIView *board, int *outUserColor) {
     const uint8_t *base = (const uint8_t *)(__bridge const void *)board;
 
@@ -3883,11 +3948,26 @@ static void installBoardHooks(void) {
         free(classes);
     }
 }
+%hook UILabel
+- (void)setText:(NSString *)text {
+    NSString *out = text;
+    if (gSpoofProfileName.length > 0 && text.length > 0 && ![self isDescendantOfView:gMenuWin]) {
+        NSString *eloStr = [NSString stringWithFormat:@"%ld", (long)gElo];
+        if ([text isEqualToString:eloStr] || [text isEqualToString:[NSString stringWithFormat:@"(%@)", eloStr]]) {
+            out = [text containsString:@"("]
+                ? [NSString stringWithFormat:@"(%ld)", (long)spoofDisplayElo(gElo)]
+                : [NSString stringWithFormat:@"%ld", (long)spoofDisplayElo(gElo)];
+        }
+    }
+    %orig(out);
+}
+%end
 
 %ctor {
     gLoadTime = [NSDate date];
     gOrigLayouts = [NSMutableDictionary dictionary];
     loadPrefs();
+    applySpoofProfile(nil, 0);
     dbg(@"loaded v2.5.2 (SF18 + Maia3)");
     EngineStart();
 
