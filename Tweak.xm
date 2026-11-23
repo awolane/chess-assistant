@@ -1841,7 +1841,7 @@ dbg([NSString stringWithFormat:@"PANEL ERR: %@ - %@", e.name, e.reason]);
     }];
 }
 @end
-
+}
 static void showSettingsMenu(void) {
     dispatch_async(dispatch_get_main_queue(), ^{ [CHSettingsPanel show]; });
 }
