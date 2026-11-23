@@ -7,8 +7,6 @@
 #import <malloc/malloc.h>
 #import "engine.h"
 #import "maia.h"
-#import <AudioToolbox/AudioToolbox.h>
-#import <AVFoundation/AVFoundation.h>
 
 #define CH_ACCENT [UIColor colorWithRed:0.85 green:0.15 blue:0.20 alpha:1.0]
 
@@ -1173,36 +1171,6 @@ static void clampGeloToActiveRange(void) {
     UILabel     *_opValue;
 }
 @end
-static AVAudioPlayer *gMenuPlayer = nil;
-
-static void playUISound(SystemSoundID sid) {
-    AudioServicesPlaySystemSound(sid);
-}
-
-static void startMenuMusic(void) {
-    if (gMenuPlayer && gMenuPlayer.isPlaying) return;
-    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
-    [[AVAudioSession sharedInstance] setActive:YES error:nil];
-    
-    NSString *path = [[NSBundle mainBundle] pathForResource:@"menu" ofType:@"mp3"];
-    if (!path) path = @"/var/jb/Library/Application Support/Chess/menu.mp3";
-    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) return;
-    
-    NSURL *url = [NSURL fileURLWithPath:path];
-    gMenuPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:url error:nil];
-    gMenuPlayer.numberOfLoops = -1;
-    gMenuPlayer.volume = 0.45;
-    [gMenuPlayer prepareToPlay];
-    [gMenuPlayer play];
-}
-
-static void stopMenuMusic(void) {
-    if (gMenuPlayer) {
-        [gMenuPlayer stop];
-        gMenuPlayer = nil;
-    }
-}
-
 @implementation CHSettingsPanel
 
 + (void)show {
@@ -1216,8 +1184,7 @@ static void stopMenuMusic(void) {
     [root addSubview:p];
     [p build];
     [p animateIn];
-    playUISound(1104);
-    startMenuMusic();
+  
 }
 
 - (instancetype)initWithFrame:(CGRect)f {
@@ -1709,7 +1676,7 @@ copyRow.axis = UILayoutConstraintAxisHorizontal; copyRow.spacing = 8; copyRow.di
 [miscTab addArrangedSubview:copyRow];
 [miscTab addArrangedSubview:[self sectionLabel:@"Credits"]];
 UILabel *tgLbl = [self lbl:@"Telegram: t.me/recrouser" size:13 weight:UIFontWeightSemibold color:[UIColor whiteColor]];
-UILabel *ytLbl = [self lbl:@"YouTube: https://youtube.com" size:12 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.75 alpha:1.0]];
+UILabel *ytLbl = [self lbl:@"Seth & recrouser owned" size:12 weight:UIFontWeightRegular color:[UIColor colorWithWhite:0.75 alpha:1.0]];
 ytLbl.numberOfLines = 0;
 UIStackView *credCol = [[UIStackView alloc] initWithArrangedSubviews:@[tgLbl, [self sep], ytLbl]];
 credCol.axis = UILayoutConstraintAxisVertical; credCol.spacing = 8;
