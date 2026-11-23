@@ -1148,7 +1148,7 @@ static int activeEloNearestIndex(NSInteger e) {
     for (int i = 0; i < c; i++) { long d = labs((long)(l[i] - e)); if (d < bd) { bd = d; best = i; } }
     return best;
 }
-static NSInteger activeEloForIndex(int i) {
+__attribute__((unused)) static NSInteger activeEloForIndex(int i) {
     int c = 0; const NSInteger *l = activeEloLevels(&c);
     if (i < 0) i = 0; if (i >= c) i = c - 1;
     return l[i];
